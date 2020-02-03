@@ -56,28 +56,28 @@ for i in tqdm (range(number_episodes)):
             for s_index in samples_indexes:
                 samples.append(MR[s_index])
 
-                fit_input  = []  # Input batch of the model
-                fit_output = []  # Desired output batch for the input
+            fit_input  = []  # Input batch of the model
+            fit_output = []  # Desired output batch for the input
 
-                for sample in samples:
-                    sample_state        = np.zeros(1)
-                    sample_state[0]     = sample[0]  # Previous sat.state
-                    sample_action       = sample[1]  # Action made
-                    sample_new_state    = np.zeros(1)
-                    sample_new_state[0] = sample[2]  # Arrival sat.state
-                    sample_reward       = sample[3]  # Obtained reward
-                    sample_new_state    = sample_new_state.reshape(1,1,1)
-                    sample_goal         = sample_reward + gamma * np.max(target_model.predict([sample_new_state]))
-                    sample_state        = np.asarray(sample_state)
-                    sample_state        = sample_state.reshape(1,1,1)
-                    sample_output       = step_model.predict([np.asarray(sample_state)])[0]
+            for sample in samples:
+                sample_state        = np.zeros(1)
+                sample_state[0]     = sample[0]  # Previous sat.state
+                sample_action       = sample[1]  # Action made
+                sample_new_state    = np.zeros(1)
+                sample_new_state[0] = sample[2]  # Arrival sat.state
+                sample_reward       = sample[3]  # Obtained reward
+                sample_new_state    = sample_new_state.reshape(1,1,1)
+                sample_goal         = sample_reward + gamma * np.max(target_model.predict([sample_new_state]))
+                sample_state        = np.asarray(sample_state)
+                sample_state        = sample_state.reshape(1,1,1)
+                sample_output       = step_model.predict([np.asarray(sample_state)])[0]
 
-                    fit_input.append(sample_state[0])  # Input of the model
-                    fit_output.append(sample_output)   # Output of the model
+                fit_input.append(sample_state[0])  # Input of the model
+                fit_output.append(sample_output)   # Output of the model
 
-                    # Fit the model with the given batch
-                    history = step_model.fit([np.asarray(fit_input)], np.asarray(fit_output),
-                        batch_size = None, epochs = 1, steps_per_epoch = 1, verbose = 0)
+                # Fit the model with the given batch
+                history = step_model.fit([np.asarray(fit_input)], np.asarray(fit_output),
+                    batch_size = None, epochs = 1, steps_per_epoch = 1, verbose = 0)
 
         if j % update == 0:
             target_model.set_weights(step_model.get_weights())
