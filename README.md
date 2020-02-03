@@ -1,7 +1,7 @@
 # Simulation tool
 
 This is a simulation tool made for simulating satellite and manage the payload
-with a nearual Network. In order to be as flexible as possible this tool is created
+with a neural Network. In order to be as flexible as possible this tool is created
 with a modular structure.
 
 ## How it works
