@@ -10,7 +10,7 @@ The simulator is done in this way
 1. Payload setting
 1. Characterize the satelite to ground link:
   1. Ground antennas characterization
-  1. Channel characterization
+  1. beam characterization
   1. Satelite antenna characterization
 1. Create the ground segment requested traffic
 1. Optimization using Neural Network
@@ -26,7 +26,7 @@ system confgure itself using this parameters.
 The aim of this division is create a good simulation tool for this and future
 works.
 ### Payload setting
-### Channel
+### beam
 ### Satelite antennas
 ### Ground antennas
 ### Ground segment requested traffic
