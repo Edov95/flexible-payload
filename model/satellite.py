@@ -69,7 +69,7 @@ class Satellite(object):
             self._demand_vector.append(demand)
             offer_vector.append(offer)
 
-        observable = [previous_demand, self._demand_vector]
+        observable = [self._demand_vector, previous_demand]
         reward = ((np.array(self._demand_vector) - np.array(offer_vector))**2)\
             .sum()
         return observable, reward
