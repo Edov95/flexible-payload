@@ -11,6 +11,8 @@ the optimization function.
 """
 
 import numpy as np
+import model.environment as env
+import model.user as usr
 
 
 class Satellite(object):
@@ -21,7 +23,7 @@ class Satellite(object):
         super(Satellite, self).__init__()
         self._num_of_ch = beams
         self._beams = [Beam() for _ in range(beams)]
-        self._tot_pow = (61 + 2) * beams
+        self._tot_pow = 61
         self._state = [61 for _ in range(beams)]
         self._state.append(self._tot_pow)
 
@@ -51,6 +53,22 @@ class Satellite(object):
 
         return self._state
 
+    def step(self, action):
+        """Apply the action to the satellite."""
+        pass
+
+    def actions_state(self, arg):
+        """Get the action state for the satellite."""
+        pass
+
+    def reward(self):
+        """Return the reward for the given action."""
+        demand = self.get_demand()
+        offered = self.calculate_offered()
+        # Eucledean norm to calculate the distance between the vecors/matricies
+        reward = np.sqrt(((offered - demand)**2).sum())
+        return reward
+
 
 class Beam(object):
     """Model the satellite beam.
@@ -60,6 +78,10 @@ class Beam(object):
     by the beam, the beam loss till the earth and many others.
     """
 
+    _gen_rate = 0
+    _total_users = 0
+    _users = 0
+
     def __init__(self):
         """Initialize the beam.
 
@@ -67,114 +89,130 @@ class Beam(object):
         min_pow = 56, max_pow = 66 and EIRP = 61
         """
         super(Beam, self).__init__()
-        self._EIRP = 61
-        self._max_pow = 66
-        self._min_pow = 56
-        self._EIRP_step = 0.5
+        self._EIRP = 61  # Should be parametrized
+        self._max_pow = 66  # Should be parametrized
+        self._min_pow = 56  # Should be parametrized
+        self._EIRP_step = 0.5  # Should be parametrized
+        self._EIRP_action = range(self._min_pow, self._max_pow,
+                                  self._EIRP_step)
 
-        self._users = 0
-        self._min_usr = 0
-        self._max_urs = 10
-        self._user_step = 1
+        self._ambient = env.Ambient()
 
-        self._rain_loss = 0.2  # Rain loss Initialize to 0
+        self._gen_rate = usr.UserGenerationRate()
+        """rate = self._gen_rate.step()
+        self._users = np.random.poisson(rate)
+        self._total_users = [usr.User() for i in range(self._users)]"""
 
-    def EIRP():
-        """EIRP property.
+    def update_users(self):
+        """Update the connected users to the channel."""
+        # Append the next time step users
+        rate = self.gen_rate.next_step()
+        self._users += np.random.poisson(rate)
+        for i in range(self._users):
+            self._total_users.append(usr.User())
 
-        Every time the EIRP is setted the CNR ratio is updated
-        """
-        doc = "The EIRP property."
+        indexes = []
+        for i in range(self._users):
+            temp = self._total_users[i].step()  # È stato in servizio 2 min
+            if 0 >= temp:
+                indexes.append(i)
 
-        def fget(self):
-            return self._EIRP
+        # Remove users that have terminated the service
+        for i in range(len(indexes)):
+            self._total_users.pop(indexes[i])
 
-        def fset(self, value):
-            if(self._min_pow <= value <= self._max_pow):
-                self._EIRP = value
-                self.update()
+        self._users = len(self.total_users)
 
-        def fdel(self):
-            del self._EIRP
-        return locals()
-    EIRP = property(**EIRP())
-
-    def rain_loss():
-        """Modify the rain loss."""
-        doc = "The rain_loss property."
-
-        def fget(self):
-            return self._rain_loss
-
-        def fset(self, value):
-            self._rain_loss = value
-            self.update()
-
-        def fdel(self):
-            del self._rain_loss
-        return locals()
-    rain_loss = property(**rain_loss())
-
-    def users():
-        """User property."""
-        doc = "The users property."
-
-        def fget(self):
-            return self._users
-
-        def fset(self, value):
-            if (self._min_usr <= value <= self._max_urs):
-                self._users = value
-
-        def fdel(self):
-            del self._users
-        return locals()
-    users = property(**users())
-
-    def update(self):
-        r"""Update all the values that can be returned.
-
-        This function calculate the link budget over the beam using the formula
-        .. math:: \frac{C}{N_0} = P_{b,t} - \texit{OBO} + G_{T_x} + G_{R_x} +
-        \textit{FPSL} - L_{rain} - 10\log_{10}\left(kT_{sys}\right)
-        """
-        self._CNR = self._EIRP - self._OBO + self._gtx + self._grx + \
-            self._FPSL - self._rain - self._bolz
-
-    def lighting(self, arg):
-        """Set the lighting for the beam."""
-        pass
+    def calculate_demand(self):
+        """Returnt the demand capacity for the beam."""
+        demand = 500 * self._users  # Each user has 500kbps const cap. demand
+        return demand
 
     def get_actions(self):
         """Return the possible action for the beam.
 
         May be that we need to return always 3 actions
         """
-        tmp_min = self._min_usr
-        tmp_max = self._max_urs
-        tmp = self._users
-        step = self._user_step
+        return {'EIRP': self._EIRP_actions}
 
-        usr_actions = [i for i in range(tmp_min - tmp,
-                                        tmp_max - tmp + step,
-                                        step)]
-
-        tmp_min = self._min_pow
-        tmp_max = self._max_pow
-        tmp = self._EIRP
-        step = self._EIRP_step
-
-        EIRP_actions = [i for i in range((tmp_min - tmp) * 1 / step,
-                                         (tmp_max - tmp + step) * 1 / step, 1)]
-
-        return {'user': usr_actions, 'EIRP': EIRP_actions}
-
-    def next_step(self):
+    def step(self, action):
         """Modify all the parameters for the next step.
 
         This method will modify all the beam parameters that we want to change
         from one step to the other.
         """
+        loss = self._ambient.step()
+        self.update_users()
+        SNR = action - loss
+        efficiency = self.DVB2S(SNR)
+        total_demand = self.calculate_demand()
+        capacity_offered = SNR + efficiency
+        return total_demand - capacity_offered
+
+    def DVB2S(SNR):
+        """Rerturn the spectral efficiency given an SNR in dB."""
+        efficiency = 0
+        if (SNR > 16.05):
+            efficiency = 4.443027
+        elif (SNR > 15.69):
+            efficiency = 4.397854
+        elif (SNR > 14.28):
+            efficiency = 4.119540
+        elif (SNR > 13.64):
+            efficiency = 3.951571
+        elif (SNR > 13.13):
+            efficiency = 3.567342
+        elif (SNR > 12.89):
+            efficiency = 3.523143
+        elif (SNR > 12.73):
+            efficiency = 3.703295
+        elif (SNR > 11.61):
+            efficiency = 3.300184
+        elif (SNR > 11.03):
+            efficiency = 3.165623
+        elif (SNR > 10.98):
+            efficiency = 2.679207
+        elif (SNR > 10.69):
+            efficiency = 2.646012
+        elif (SNR > 10.21):
+            efficiency = 2.966728
+        elif (SNR > 9.35):
+            efficiency = 2.478562
+        elif (SNR > 8.97):
+            efficiency = 2.637201
+        elif (SNR > 7.91):
+            efficiency = 2.228124
+        elif (SNR > 6.62):
+            efficiency = 1.980636
+        elif (SNR > 6.42):
+            efficiency = 1.788612
+        elif (SNR > 6.20):
+            efficiency = 1.766451
+        elif (SNR > 5.50):
+            efficiency = 1.779991
+        elif (SNR > 5.18):
+            efficiency = 1.654663
+        elif (SNR > 4.68):
+            efficiency = 1.587196
+        elif (SNR > 4.03):
+            efficiency = 1.487473
+        elif (SNR > 3.10):
+            efficiency = 1.322253
+        elif (SNR > 2.23):
+            efficiency = 1.188304
+        elif (SNR > 1):
+            efficiency = 0.988858
+        elif (SNR > -0.30):
+            efficiency = 0.789412
+        elif (SNR > -1.24):
+            efficiency = 0.656448
+        elif (SNR > -2.35):
+            efficiency = 0.490243
+        else:
+            efficiency = 0.250000
+
+        efficiency = 10 * np.log10(efficiency)
+        return efficiency
 
 
 def random_state():

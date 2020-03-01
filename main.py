@@ -72,8 +72,9 @@ for i in tqdm(range(number_episodes)):
                     target_model.predict([sample_new_state]))
                 sample_state = np.asarray(sample_state)
                 sample_state = sample_state.reshape(1, 1, 1)
-                sample_output = step_model.predict(
-                    [np.asarray(sample_state)])[0]
+                # sample_output = step_model.predict(
+                #    [np.asarray(sample_state)])[0]
+                sample_output = sample_goal
 
                 fit_input.append(sample_state[0])  # Input of the model
                 fit_output.append(sample_output)   # Output of the model
