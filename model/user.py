@@ -57,14 +57,16 @@ class UserGenerationRate(object):
     according to a poisson random process
     """
 
+    _arrival_rate = 0
+
     def __init__(self):
         """Docstring for Constructor.
 
         Default Constructor
         """
         super(UserGenerationRate, self).__init__()
-        self.time_stamp = 0  # The index for the vector
-        self.stamps = 1440  # One sample every two minutes for 48h
+        self._time_stamp = 0  # The index for the vector
+        self._stamps = 1440  # One sample every two minutes for 48h
         # Punto di inizio modellato come una uniforme tra -pi/6 e pi/6,
         # così modello lo spazio tra il traffico in funzione del fuso orario
         # È la fase del mio rate
@@ -78,17 +80,17 @@ class UserGenerationRate(object):
         # Devo rendere il processo positivo, non esiste capacità negativa.
         # Ora non è negativa, di "notte" posso avere uno 0, improbabile
         # Risolvere in future versioni
-        self.arrival_rate = arrival_rate - np.min(arrival_rate)
+        self._arrival_rate = arrival_rate
 
     def stamps():
         """Stamps."""
         doc = "The stamps property."
 
         def fget(self):
-            return self.stamps
+            return self._stamps
 
         def fdel(self):
-            del self.stamps
+            del self._stamps
         return locals()
     stamps = property(**stamps())
 
@@ -99,6 +101,6 @@ class UserGenerationRate(object):
         with the action taken.
         """
         # Numbers of arrivail in the timestep
-        ret = np.random.poisson(self.arrival_rate[self.time_stamp])
-        self.time_stamp += 1
+        ret = np.random.poisson(self._arrival_rate[self._time_stamp])
+        self._time_stamp += 1
         return ret

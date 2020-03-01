@@ -55,7 +55,17 @@ class Satellite(object):
 
     def step(self, action):
         """Apply the action to the satellite."""
-        pass
+        previous_demand = self._demand_vector.copy()
+        self._demand_vector = []
+        offer_vector = []
+        for i in len(self._beams):
+            demand, offer = self._beams[i].step(action[i])
+            self._demand_vector.append(demand)
+            offer_vector.append(offer)
+
+        observable = [previous_demand, self._demand_vector]
+        reward = ((self._demand_vector - offer_vector)**2).sum()
+        return observable, reward
 
     def actions_state(self, arg):
         """Get the action state for the satellite."""
@@ -79,7 +89,7 @@ class Beam(object):
     """
 
     _gen_rate = 0
-    _total_users = 0
+    _total_users = []
     _users = 0
 
     def __init__(self):
@@ -89,12 +99,13 @@ class Beam(object):
         min_pow = 56, max_pow = 66 and EIRP = 61
         """
         super(Beam, self).__init__()
-        self._EIRP = 61  # Should be parametrized
+        self._EIRP = 61.0  # Should be parametrized
         self._max_pow = 66  # Should be parametrized
         self._min_pow = 56  # Should be parametrized
         self._EIRP_step = 0.5  # Should be parametrized
-        self._EIRP_action = range(self._min_pow, self._max_pow,
-                                  self._EIRP_step)
+        # self._EIRP_action = range(self._min_pow, self._max_pow,
+        #                           self._EIRP_step)
+        self._EIRP_actions = np.linspace(self._min_pow, self._max_pow, 20)
 
         self._ambient = env.Ambient()
 
@@ -106,9 +117,8 @@ class Beam(object):
     def update_users(self):
         """Update the connected users to the channel."""
         # Append the next time step users
-        rate = self.gen_rate.next_step()
-        self._users += np.random.poisson(rate)
-        for i in range(self._users):
+        users_to_append = self._gen_rate.step()
+        for i in range(users_to_append):
             self._total_users.append(usr.User())
 
         indexes = []
@@ -121,14 +131,14 @@ class Beam(object):
         for i in range(len(indexes)):
             self._total_users.pop(indexes[i])
 
-        self._users = len(self.total_users)
+        self._users = len(self._total_users)
 
     def calculate_demand(self):
         """Returnt the demand capacity for the beam."""
         demand = 500 * self._users  # Each user has 500kbps const cap. demand
         return demand
 
-    def get_actions(self):
+    def action_space(self):
         """Return the possible action for the beam.
 
         May be that we need to return always 3 actions
@@ -140,6 +150,8 @@ class Beam(object):
 
         This method will modify all the beam parameters that we want to change
         from one step to the other.
+        @return the total demand for this step and the capacit offered for
+        this step
         """
         loss = self._ambient.step()
         self.update_users()
@@ -147,7 +159,7 @@ class Beam(object):
         efficiency = self.DVB2S(SNR)
         total_demand = self.calculate_demand()
         capacity_offered = SNR + efficiency
-        return total_demand - capacity_offered
+        return total_demand, capacity_offered
 
     def DVB2S(SNR):
         """Rerturn the spectral efficiency given an SNR in dB."""
