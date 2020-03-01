@@ -18,6 +18,8 @@ import model.user as usr
 class Satellite(object):
     """docstring for Satellite."""
 
+    _beams = []
+
     def __init__(self, beams):
         """Init for Satellite."""
         super(Satellite, self).__init__()
@@ -26,16 +28,17 @@ class Satellite(object):
         self._tot_pow = 61
         self._state = [61 for _ in range(beams)]
         self._state.append(self._tot_pow)
+        self._demand_vector = []
 
-    def next_state(self, actions):
-        """Calculate the next state action for the satellite.
+    """def next_state(self, actions):
+        Calculate the next state action for the satellite.
 
         Function that calculate the next state action for the satellite given
         the action taked in this step
         @param actions is a list containing all the actions for the satellite
         in the given step
         @return the next state vector
-        """
+
         temp = sum(actions['EIRP'])
         tot_new_pow = sum([self._beams[i].EIRP
                           for i in range(self._num_of_ch)]) + temp
@@ -51,25 +54,31 @@ class Satellite(object):
                                  for i in range(self._num_of_ch)]))
             self._state = new_state
 
-        return self._state
+        return self._state"""
 
     def step(self, action):
         """Apply the action to the satellite."""
-        previous_demand = self._demand_vector.copy()
+        if not self._demand_vector:
+            previous_demand = []
+        else:
+            previous_demand = self._demand_vector.copy()
         self._demand_vector = []
         offer_vector = []
-        for i in len(self._beams):
+        for i in range(len(self._beams)):
             demand, offer = self._beams[i].step(action[i])
             self._demand_vector.append(demand)
             offer_vector.append(offer)
 
         observable = [previous_demand, self._demand_vector]
-        reward = ((self._demand_vector - offer_vector)**2).sum()
+        reward = ((np.array(self._demand_vector) - np.array(offer_vector))**2)\
+            .sum()
         return observable, reward
 
-    def actions_state(self, arg):
+    def action_space(self):
         """Get the action state for the satellite."""
-        pass
+        actions = [self._beams[i].action_space()
+                   for i in range(len(self._beams))]
+        return actions
 
     def reward(self):
         """Return the reward for the given action."""
@@ -143,7 +152,7 @@ class Beam(object):
 
         May be that we need to return always 3 actions
         """
-        return {'EIRP': self._EIRP_actions}
+        return self._EIRP_actions
 
     def step(self, action):
         """Modify all the parameters for the next step.
@@ -158,10 +167,11 @@ class Beam(object):
         SNR = action - loss
         efficiency = self.DVB2S(SNR)
         total_demand = self.calculate_demand()
-        capacity_offered = SNR + efficiency
+        SNR_lin = 10.0**((SNR + efficiency)/10)
+        capacity_offered = 5000.0 * np.log2((1 + SNR_lin))
         return total_demand, capacity_offered
 
-    def DVB2S(SNR):
+    def DVB2S(self, SNR):
         """Rerturn the spectral efficiency given an SNR in dB."""
         efficiency = 0
         if (SNR > 16.05):
