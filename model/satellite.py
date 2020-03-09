@@ -30,48 +30,27 @@ class Satellite(object):
         self._state.append(self._tot_pow)
         self._demand_vector = []
 
-    """def next_state(self, actions):
-        Calculate the next state action for the satellite.
-
-        Function that calculate the next state action for the satellite given
-        the action taked in this step
-        @param actions is a list containing all the actions for the satellite
-        in the given step
-        @return the next state vector
-
-        temp = sum(actions['EIRP'])
-        tot_new_pow = sum([self._beams[i].EIRP
-                          for i in range(self._num_of_ch)]) + temp
-
-        if (tot_new_pow <= self._tot_pow):
-            # If the condition of total power is respected the update is done
-            new_state = []
-            for i in range(self._num_of_ch):
-                self._beams[i].EIRP += actions['EIRP'][i]
-                new_state.append(self._beams[i].EIRP)
-
-            new_state.append(sum([self._beams[i].EIRP
-                                 for i in range(self._num_of_ch)]))
-            self._state = new_state
-
-        return self._state"""
-
     def step(self, action):
         """Apply the action to the satellite."""
-        if not self._demand_vector:
-            previous_demand = []
+        if self._tot_pow <= action.sum():
+            reward = 1
         else:
-            previous_demand = self._demand_vector.copy()
-        self._demand_vector = []
-        offer_vector = []
-        for i in range(len(self._beams)):
-            demand, offer = self._beams[i].step(action[i])
-            self._demand_vector.append(demand)
-            offer_vector.append(offer)
+            if not self._demand_vector:
+                previous_demand = []
+            else:
+                previous_demand = self._demand_vector.copy()
+            self._demand_vector = []
+            offer_vector = []
+            for i in range(len(self._beams)):
+                demand, offer = self._beams[i].step(action[i])
+                self._demand_vector.append(demand)
+                offer_vector.append(offer)
 
-        observable = [self._demand_vector, previous_demand]
-        reward = ((np.array(self._demand_vector) - np.array(offer_vector))**2)\
-            .sum()
+            observable = [np.array(self._demand_vector),
+                          np.array(previous_demand)]
+            # reward = ((np.array(self._demand_vector) -
+            # np.array(offer_vector))**2)\
+            #     .sum()
         return observable, reward
 
     def action_space(self):
@@ -80,13 +59,13 @@ class Satellite(object):
                    for i in range(len(self._beams))]
         return actions
 
-    def reward(self):
-        """Return the reward for the given action."""
+    """def reward(self):
+        Return the reward for the given action
         demand = self.get_demand()
         offered = self.calculate_offered()
         # Eucledean norm to calculate the distance between the vecors/matricies
         reward = np.sqrt(((offered - demand)**2).sum())
-        return reward
+        return reward"""
 
 
 class Beam(object):
@@ -108,13 +87,13 @@ class Beam(object):
         min_pow = 56, max_pow = 66 and EIRP = 61
         """
         super(Beam, self).__init__()
-        self._EIRP = 61.0  # Should be parametrized
-        self._max_pow = 66  # Should be parametrized
-        self._min_pow = 56  # Should be parametrized
+        # self._EIRP = 61.0  # Should be parametrized
+        self._max_pow = 100  # Should be parametrized
+        self._min_pow = 0  # Should be parametrized
         self._EIRP_step = 0.5  # Should be parametrized
         # self._EIRP_action = range(self._min_pow, self._max_pow,
         #                           self._EIRP_step)
-        self._EIRP_actions = np.linspace(self._min_pow, self._max_pow, 20)
+        self._EIRP_actions = np.linspace(self._min_pow, self._max_pow, 200)
 
         self._ambient = env.Ambient()
 
@@ -143,7 +122,7 @@ class Beam(object):
         self._users = len(self._total_users)
 
     def calculate_demand(self):
-        """Returnt the demand capacity for the beam."""
+        """Return the demand capacity for the beam."""
         demand = 500 * self._users  # Each user has 500kbps const cap. demand
         return demand
 
@@ -162,13 +141,19 @@ class Beam(object):
         @return the total demand for this step and the capacit offered for
         this step
         """
-        loss = self._ambient.step()
         self.update_users()
+        loss = self._ambient.step()
+        # print("loss: " + str(loss))
         SNR = action - loss
+        # print("SNR (dB): " + str(SNR))
         efficiency = self.DVB2S(SNR)
+        # print("ro (dB): " + str(efficiency))
         total_demand = self.calculate_demand()
+        # print("tot_dem: " + str(total_demand))
         SNR_lin = 10.0**((SNR + efficiency)/10)
+        # print("SNR lin: " + str(SNR_lin))
         capacity_offered = 5000.0 * np.log2((1 + SNR_lin))
+        # print("Cap. off.: " + str(capacity_offered))
         return total_demand, capacity_offered
 
     def DVB2S(self, SNR):
