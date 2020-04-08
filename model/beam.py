@@ -28,7 +28,7 @@ class Beam(object):
         self._wait_queue = []
         self._in_wait = int(0)
 
-        self._max_users = int(20)
+        self._max_users = int(10)
 
         self._reward = int(0)
 
@@ -42,7 +42,7 @@ class Beam(object):
 
         # Remove users that have terminated the service
         for i in range(len(indexes)):
-            self._service_queue.pop(indexes[i])
+            self._service_queue.pop(indexes[i] - i)
             self._reward += 2
 
         self._in_service = len(self._service_queue)
@@ -59,8 +59,8 @@ class Beam(object):
 
         # Remove users that have terminated the service
         for i in range(len(indexes)):
-            self._wait_queue.pop(indexes[i])
-            self._reward -= 2
+            self._wait_queue.pop(indexes[i] - i)
+            self._reward -= 4
 
         self._in_wait = len(self._wait_queue)
 
@@ -93,7 +93,7 @@ class Beam(object):
           from the wait queue.
         3 add the user in wait queue and pop the first user from the wait queue
         """
-        self._reward = 0
+        self._reward = int(0)
 
         # print(self._in_wait)
         # print(self._wait_queue)
@@ -101,17 +101,17 @@ class Beam(object):
         self.update_in_service(time)
         self.update_in_wait(time)
 
-        if ("" != user):
-            if (0 == action):
-                self.action_one(user)
-            elif (1 == action):
-                self.action_two(user)
-            elif (2 == action):
-                self.action_three(user)
-            elif (3 == action):
-                self.action_four(user)
-            else:
-                print("No valid action")
+        # if ("" != user):
+        if (0 == action):
+            self.action_one(user)
+        elif (1 == action):
+            self.action_two(user)
+        elif (2 == action):
+            self.action_three(user)
+        elif (3 == action):
+            self.action_four(user)
+        else:
+            print("No valid action")
 
         state = np.zeros(2)
         state[0] = self._in_service
@@ -119,33 +119,11 @@ class Beam(object):
 
         return state, self._reward
 
-        """Modify all the parameters for the next step.
-
-        This method will modify all the beam parameters that we want to change
-        from one step to the other.
-        @return the total demand for this step and the capacit offered for
-        this step
-        self.update_users()
-        loss = self._ambient.step()
-        # print("loss: " + str(loss))
-        SNR = action - loss
-        # print("SNR (dB): " + str(SNR))
-        efficiency = self.DVB2S(SNR)
-        # print("ro (dB): " + str(efficiency))
-        total_demand = self.calculate_demand()
-        # print("tot_dem: " + str(total_demand))
-        SNR_lin = 10.0**((SNR + efficiency)/10)
-        # print("SNR lin: " + str(SNR_lin))
-        capacity_offered = 5000.0 * np.log2((1 + SNR_lin))
-        # print("Cap. off.: " + str(capacity_offered))
-        return total_demand, capacity_offered
-        """
-
     def action_one(self, user):
         """Execute the action one."""
         if (self._in_service < self._max_users):
             self.add_user_in_service(user)
-            # self._reward += 2
+            self._reward += 0.5
         else:
             self.add_user_in_wait(user)
             self._reward -= 2
@@ -153,7 +131,7 @@ class Beam(object):
     def action_two(self, user):
         """Put the user in wait queue."""
         self.add_user_in_wait(user)
-        # self._reward += 1
+        self._reward += 0.5
 
     def action_three(self, user):
         """Add the arrived user and the firt user of wait queue in service."""
@@ -163,7 +141,7 @@ class Beam(object):
                 temp_user = self._wait_queue.pop(0)
                 self._in_wait -= 1
                 self.add_user_in_service(temp_user)
-                # self._reward += 3
+                self._reward += 1
             # else:
             # self._reward += -1
         else:
@@ -180,7 +158,7 @@ class Beam(object):
             temp_user = self._wait_queue.pop(0)
             self._in_wait -= 1
             self.add_user_in_service(temp_user)
-            # self._reward += 2
+            self._reward += 0.5
         else:
             self._reward += -2
 

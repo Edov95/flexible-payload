@@ -16,8 +16,8 @@ class User(object):
         """
         super(User, self).__init__()
         self._demand = 500  # Capacity in kbps, a number (articolo cinesi)
-        self._service_time = np.random.poisson(60)  # service time in seconds
-        self._wait_time = 120  # constant wait time for the user can be random
+        self._service_time = np.random.poisson(25)  # service time in seconds
+        self._wait_time = 50  # constant wait time for the user can be random
         self._queue = "None"  # indicate in which queue the user is
         # calcolo priorità in funzione di una uniforme e dei limiti
         # Si potrebbe mettere domanda in funzione della priorità e non tenedola

@@ -35,7 +35,7 @@ class Satellite(object):
         """Apply the action to the satellite."""
         user = usr.User()
         time = np.random.poisson(3)
-        observable = np.zeros(0)
+        observable = np.zeros((self._num_beams + 1, 2))
         reward = 0
 
         for i in range(self._num_beams):
@@ -45,12 +45,12 @@ class Satellite(object):
             else:
                 state, _ = self._beams[i].step(action, "", time)
 
-            observable = np.append(observable, state)
+            observable[i] = state
 
-        self._to_assign = np.random.randint(self._num_beams)
+        self._to_assign = np.random.randint(-1, self._num_beams)
 
-        observable = np.append(observable, [self._to_assign, 0])
-        observable = observable.reshape((self._num_beams + 1, 2))
+        observable[self._num_beams] = np.asarray([self._to_assign, 0])
+        # observable = observable.reshape((self._num_beams + 1, 2))
         # observable.append(self._to_assign)
 
         return observable, reward
@@ -70,17 +70,15 @@ class Satellite(object):
 
     def state(self):
         """Return the state of the satellite."""
-        observable = np.zeros(0)
+        observable = np.zeros((self._num_beams + 1, 2))
 
         for i in range(self._num_beams):
             state = self._beams[i].state()
 
-            observable = np.append(observable, state)
+            observable[i] = state
 
-        self._to_assign = np.random.randint(self._num_beams)
-        observable = np.append(observable, [self._to_assign, 0])
-
-        observable = observable.reshape((self._num_beams + 1, 2))
+        # self._to_assign = np.random.randint(self._num_beams)
+        observable[self._num_beams] = np.asarray([self._to_assign, 0])
 
         return observable
 
