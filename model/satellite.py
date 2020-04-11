@@ -12,7 +12,7 @@ the optimization function.
 
 import numpy as np
 import model.beam as beam
-import model.user as usr
+# import model.user as usr
 
 
 class Satellite(object):
@@ -26,6 +26,9 @@ class Satellite(object):
         self._num_beams = beams
         self._beams = [beam.Beam() for _ in range(beams)]
         self._to_assign = np.random.randint(self._num_beams)
+        self._n_actions = beams * 3
+        self._done = False
+        self._info = {}
         # self._tot_pow = 61
         # self._state = [61 for _ in range(beams)]
         # self._state.append(self._tot_pow)
@@ -33,37 +36,70 @@ class Satellite(object):
 
     def step(self, action):
         """Apply the action to the satellite."""
-        user = usr.User()
-        time = np.random.poisson(3)
+        # user = usr.User()
+        # time = np.random.poisson(3)
         observable = np.zeros((self._num_beams + 1, 2))
         reward = 0
+        self._done = False
 
-        for i in range(self._num_beams):
-            # print("Beam: {}".format(i))
-            if (i == self._to_assign):
-                state, reward = self._beams[i].step(action, user, time)
+        if (-1 != self._to_assign):
+            self._beams[self._to_assign].add_user()
+            self._to_assign = -1
+
+        if action != self._num_beams:
+            beam = int(action / 3)
+            if (beam != 0):
+                act = int(action % beam)
             else:
-                state, _ = self._beams[i].step(action, "", time)
+                act = action
 
-            observable[i] = state
+            for i in range(self._num_beams):
+                # print("Beam: {}".format(i))
+                if (i == beam):
+                    state, rew, info = self._beams[i].step(act)
+                else:
+                    state, rew, info = self._beams[i].step(-1)
 
-        self._to_assign = np.random.randint(-1, self._num_beams)
+                reward += rew
+                observable[i] = state
+
+            if rew < 0:
+                self._done = True
+        else:
+            self._done = True
+
+            for i in range(self._num_beams):
+                state, rew, info = self._beams[i].step(-1)
+                observable[i] = state
+                reward += rew
+
+            prob = np.random.rand(1)
+            if (prob < 0.5):
+                self._to_assign = -1
+            elif(prob < 0.75):
+                self._to_assign = 0
+            else:
+                self._to_assign = 1
 
         observable[self._num_beams] = np.asarray([self._to_assign, 0])
-        # observable = observable.reshape((self._num_beams + 1, 2))
-        # observable.append(self._to_assign)
 
-        return observable, reward
+        return observable, reward, self._done, self._info
+
+    def advance(self):
+        """Advane one time step."""
+        self._to_assign = np.random.randint(self._num_beams)
+        for i in range(self._num_beams):
+            self._beams[i].advance()
 
     def random_action(self):
         """Get a random action."""
-        return np.random.randint(4)
+        return np.random.randint(self._n_actions)
 
     def action_space(self):
         """Get the action space."""
         actions = []
 
-        for i in range(4):
+        for i in range(self._n_actions):
             actions.append(i)
 
         return actions
@@ -95,20 +131,3 @@ class Satellite(object):
         # Eucledean norm to calculate the distance between the vecors/matricies
         reward = np.sqrt(((offered - demand)**2).sum())
         return reward"""
-
-
-def random_state():
-    """Return a random satellite state."""
-    SNR_difference = np.random.uniform()
-    return SNR_difference - 1
-
-
-def random_action():
-    """Return a random statellite possible action."""
-    Power_difference = np.random.uniform()
-    return (Power_difference - 1) / 10
-
-
-def reward(SNR_difference):
-    """Calculate the reward."""
-    return 1 - SNR_difference ** 2
