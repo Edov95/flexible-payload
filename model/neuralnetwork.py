@@ -29,7 +29,7 @@ class Agent(object):
             self._actions[0, i] = 1
 
         self._n_state = n_state
-        self._gamma = 0.8
+        self._gamma = 0.4
 
     def create_step_model(self, n_actions, n_state):
         """Create the models for the neaural network."""
@@ -68,7 +68,7 @@ class Agent(object):
                                                      self._actions],
                                                      use_multiprocessing=True))
             sample_output = self._step_model.predict([np.asarray(state),
-                                                     self._actions],
+                                                      self._actions],
                                                      use_multiprocessing=True
                                                      )[0]
             act = np.ndarray((1, self._n_actions))
