@@ -12,7 +12,7 @@ the optimization function.
 
 import numpy as np
 import model.beam as beam
-# import model.user as usr
+import model.user as usr
 
 
 class Satellite(object):
@@ -26,9 +26,13 @@ class Satellite(object):
         self._num_beams = beams
         self._beams = [beam.Beam() for _ in range(beams)]
         self._to_assign = np.random.randint(self._num_beams)
-        self._n_actions = beams * 3
+        self._n_actions = 1 * beams + 1
         self._done = False
         self._info = {}
+        self._user_generation = [usr.UserGenerationRate()
+                                 for _ in range(beams)]
+        self._users = int(0)
+        self._reward = 0
         # self._tot_pow = 61
         # self._state = [61 for _ in range(beams)]
         # self._state.append(self._tot_pow)
@@ -38,62 +42,99 @@ class Satellite(object):
         """Apply the action to the satellite."""
         # user = usr.User()
         # time = np.random.poisson(3)
-        observable = np.zeros((self._num_beams + 1, 2))
+        observable = np.zeros((self._num_beams, 11))
         reward = 0
         self._done = False
+        self._reward = 0
 
         if (-1 != self._to_assign):
-            self._beams[self._to_assign].add_user()
             self._to_assign = -1
 
         if action != self._num_beams:
-            beam = int(action / 3)
-            if (beam != 0):
-                act = int(action % beam)
-            else:
-                act = action
-
             for i in range(self._num_beams):
                 # print("Beam: {}".format(i))
-                if (i == beam):
-                    state, rew, info = self._beams[i].step(act)
+                if (i == action):
+                    state, rew, info = self._beams[i].step(0)
                 else:
                     state, rew, info = self._beams[i].step(-1)
 
                 reward += rew
                 observable[i] = state
 
-            if rew < 0:
+            if reward <= 0:
                 self._done = True
+                self._reward = -3
+            elif self._reward >= 0:
+                self._reward += reward
         else:
             self._done = True
 
+            in_wait = np.zeros(self._num_beams)
+            in_service = np.zeros(self._num_beams)
+
             for i in range(self._num_beams):
-                state, rew, info = self._beams[i].step(-1)
+                state, _, info = self._beams[i].step(-1)
                 observable[i] = state
-                reward += rew
+                in_wait[i] = state[0]
+                in_service[i] = len(np.argwhere(state[1:] > -1))
 
-            prob = np.random.rand(1)
-            if (prob < 0.5):
-                self._to_assign = -1
-            elif(prob < 0.75):
-                self._to_assign = 0
-            else:
-                self._to_assign = 1
+            # self._reward = np.exp(-in_wait)
+            for i in range(self._num_beams):
+                if in_service[i] < 10 and in_wait[i] > 0:
+                    self._reward = -2
 
-        observable[self._num_beams] = np.asarray([self._to_assign, 0])
+            if self._reward == 0 and sum(in_service) + sum(in_wait) > 0:
+                self._reward = sum(in_service) / sum(in_service + in_wait)  # - \
+                # (1 - np.exp(-in_wait))
+            elif self._reward != -2:
+                self._reward = 0
 
-        return observable, reward, self._done, self._info
+            self._to_assign = np.random.randint(self._num_beams)
+            # if (prob < 0.5):
+            #    self._to_assign = -1
+            # elif(prob < 0.75):
+            #    self._to_assign = 0
+            # else:
+            #    self._to_assign = 1
+
+        if (self._to_assign != -1):
+            self._users = self._user_generation[self._to_assign].step()
+
+        # temp = np.zeros(12)
+        # temp[0] = self._to_assign
+        # temp[1] = self._users
+        # observable[self._num_beams] = np.asarray([self._to_assign,
+        #                                          self._users, 0, 0, 0, 0, 0])
+        # observable[self._num_beams] = temp
+
+        # if reward > 0:
+        # reward = reward / self._num_beams
+
+        return observable, self._reward, self._done, self._info
 
     def advance(self):
         """Advane one time step."""
-        self._to_assign = np.random.randint(self._num_beams)
         for i in range(self._num_beams):
             self._beams[i].advance()
+
+        if(self._to_assign != -1):
+            for _ in range(self._users):
+                self._beams[self._to_assign].add_user()
+
+    # def random_state(self):
+        # for i in range(self._num_beams):
+            # self._beams[i].random_state()
 
     def random_action(self):
         """Get a random action."""
         return np.random.randint(self._n_actions)
+        # prob = np.random.rand(1)
+        # if prob < 0.45:
+        #     return 0
+        # if prob < 0.90:
+        #     return 1
+        # else:
+        #     return 2
 
     def action_space(self):
         """Get the action space."""
@@ -106,7 +147,7 @@ class Satellite(object):
 
     def state(self):
         """Return the state of the satellite."""
-        observable = np.zeros((self._num_beams + 1, 2))
+        observable = np.zeros((self._num_beams, 11))
 
         for i in range(self._num_beams):
             state = self._beams[i].state()
@@ -114,7 +155,14 @@ class Satellite(object):
             observable[i] = state
 
         # self._to_assign = np.random.randint(self._num_beams)
-        observable[self._num_beams] = np.asarray([self._to_assign, 0])
+        # observable[self._num_beams] = np.asarray([self._to_assign,
+        #                                           0, 0, 0, 0, 0, 0])
+        # temp = np.zeros(12)
+        # temp[0] = self._to_assign
+        # temp[1] = self._users
+        # observable[self._num_beams] = np.asarray([self._to_assign,
+        #                                           self._users, 0, 0, 0, 0, 0])
+        # observable[self._num_beams] = temp
 
         return observable
 

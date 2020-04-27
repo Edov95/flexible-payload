@@ -34,6 +34,8 @@ class Beam(object):
         self._user = None
         self._done = False
         self._info = {}
+        self._state = np.full(11, -1)
+        self._state[0] = 0
 
     def step(self, action):  # , user):  # , time):
         """Calculate the next step for the beams.
@@ -51,34 +53,36 @@ class Beam(object):
           from the wait queue.
         3 add the user in wait queue and pop the first user from the wait queue
         """
-        self._reward = int(0)
+        self._reward = 0
 
         if (-1 != action):
             if (0 == action):
-                self.action_one()
-            elif (1 == action):
-                self.action_two()
-            elif (2 == action):
+                # self.action_one()
+            # elif (1 == action):
+                # self.action_two()
+            # elif (2 == action):
                 self.action_three()
             else:
                 print("No valid action")
 
-            if (self._reward == 0):
-                self._reward = np.exp(-self._in_wait)
-                # self._reward = self._in_service
+        # if self._reward == 0:
+        #     self._reward = np.exp(-self._in_wait)
+            # self._reward = self._in_service
 
-        elif (self._has_user):  # Non gestisco l'utente che è arrivato
-            self._reward -= 2
-            self.add_user_in_wait(self._user)
+        # state = np.zeros(2)
+        # self._state[5] = self._state[3]
+        # self._state[4] = self._state[2]
+        # self._state[3] = self._state[1]
+        # self._state[2] = self._state[0]
+        for i in range(self._max_users):
+            if(i < len(self._service_queue)):
+                self._state[1 + i] = self._service_queue[i].service_time()
+            else:
+                self._state[1 + i] = -1
+        # self._state[0] = self._in_service
+        self._state[0] = self._in_wait
 
-        if (self._has_user):
-            self._has_user = False
-
-        state = np.zeros(2)
-        state[0] = self._in_service
-        state[1] = self._in_wait
-
-        return state, self._reward, self._info
+        return self._state, self._reward, self._info
 
     def advance(self):
         """Advance one time step."""
@@ -113,7 +117,7 @@ class Beam(object):
         # Remove users that have terminated the service
         for i in range(len(indexes)):
             self._wait_queue.pop(indexes[i] - i)
-            self._reward -= 2
+            self._reward -= 1
 
         self._in_wait = len(self._wait_queue)
 
@@ -124,16 +128,14 @@ class Beam(object):
 
     def state(self):
         """Return the state for the beam."""
-        state = np.zeros(2)
-        state[0] = self._in_service
-        state[1] = self._in_wait
+        return self._state
 
-        return state
+    # def random_state(self):
 
     def add_user(self):
         """Add a user to the system."""
         self._user = usr.User()
-        self._has_user = True
+        self.add_user_in_wait(self._user)
 
     def action_one(self):
         """Execute the action one."""
@@ -153,24 +155,25 @@ class Beam(object):
 
     def action_three(self):
         """Add the arrived user and the firt user of wait queue in service."""
-        if (self._has_user):
-            if ((self._max_users - self._in_service) >= 2):
-                self.add_user_in_service(self._user)
-                if (self._in_wait > 0):
-                    temp_user = self._wait_queue.pop(0)
-                    self._in_wait -= 1
-                    self.add_user_in_service(temp_user)
-                else:
-                    self._reward -= 2
-            else:
-                self._reward -= 2
+        # if (self._has_user):
+        #     if ((self._max_users - self._in_service) >= 2):
+        #         self.add_user_in_service(self._user)
+        #         if (self._in_wait > 0):
+        #             temp_user = self._wait_queue.pop(0)
+        #             self._in_wait -= 1
+        #             self.add_user_in_service(temp_user)
+        #         else:
+        #             self._reward -= 2
+        #     else:
+        #         self._reward -= 2
+        # else:
+        if (self._in_wait > 0 and self._max_users - self._in_service > 0):
+            temp_user = self._wait_queue.pop(0)
+            self._in_wait -= 1
+            self.add_user_in_service(temp_user)
+            self._reward = 0.1
         else:
-            if (0 < self._in_wait and self._max_users > self._in_service):
-                temp_user = self._wait_queue.pop(0)
-                self._in_wait -= 1
-                self.add_user_in_service(temp_user)
-            else:
-                self._reward -= 2
+            self._reward = -3
 
     def add_user_in_service(self, user):
         """Put the user in service queue."""

@@ -29,14 +29,14 @@ class Agent(object):
             self._actions[0, i] = 1
 
         self._n_state = n_state
-        self._gamma = 0.4
+        self._gamma = 0.8
 
     def create_step_model(self, n_actions, n_state):
         """Create the models for the neaural network."""
         x = Input(shape=(1, n_state))
         x1 = Flatten()(x)
-        x2 = (Dense(32, activation='relu'))(x1)
-        x3 = (Dense(32, activation='relu'))(x2)
+        x2 = (Dense(48, activation='relu'))(x1)
+        x3 = (Dense(48, activation='relu'))(x2)
         x4 = (Dense(n_actions))(x3)
 
         actions_input = Input((n_actions,), name='mask')
