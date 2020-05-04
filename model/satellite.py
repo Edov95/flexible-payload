@@ -18,7 +18,7 @@ import model.user as usr
 class Satellite(object):
     """docstring for Satellite."""
 
-    _beams = []
+    # _beams = []
 
     def __init__(self, beams):
         """Init for Satellite."""
@@ -29,8 +29,8 @@ class Satellite(object):
         self._n_actions = 1 * beams + 1
         self._done = False
         self._info = {}
-        self._user_generation = [usr.UserGenerationRate()
-                                 for _ in range(beams)]
+        self._user_generation = [usr.UserGenerationRate(np.random.randint(3) + 1)
+                                 for i in range(beams)]
         self._users = int(0)
         self._reward = 0
         # self._tot_pow = 61
@@ -42,30 +42,41 @@ class Satellite(object):
         """Apply the action to the satellite."""
         # user = usr.User()
         # time = np.random.poisson(3)
-        observable = np.zeros((self._num_beams, 11))
+        observable = np.zeros((self._num_beams, 16))
         reward = 0
         self._done = False
         self._reward = 0
 
-        if (-1 != self._to_assign):
-            self._to_assign = -1
+        state = self.state()
+        in_service = 0
+        for i in range(len(state)):
+            in_service = in_service + len(np.argwhere(state[1:] > -1))
 
         if action != self._num_beams:
-            for i in range(self._num_beams):
-                # print("Beam: {}".format(i))
-                if (i == action):
-                    state, rew, info = self._beams[i].step(0)
-                else:
-                    state, rew, info = self._beams[i].step(-1)
+            if in_service < self._num_beams * 12:
 
-                reward += rew
-                observable[i] = state
+                for i in range(self._num_beams):
+                    # print("Beam: {}".format(i))
+                    if (i == action):
+                        state, rew, info = self._beams[i].step(0)
+                    else:
+                        state, rew, info = self._beams[i].step(-1)
 
-            if reward <= 0:
-                self._done = True
-                self._reward = -3
-            elif self._reward >= 0:
-                self._reward += reward
+                    reward += rew
+                    observable[i] = state
+
+                if reward < 0:
+                    self._done = True
+                    self._reward = -3
+                elif self._reward >= 0:
+                    self._reward = reward
+            else:
+                for i in range(self._num_beams):
+                    state, _, info = self._beams[i].clean_service()
+                    print("azzerato lo stato, utenti in servizio: {}".
+                          format(in_service))
+                    observable[i] = state
+                return observable, -3, True, self._info
         else:
             self._done = True
 
@@ -77,43 +88,25 @@ class Satellite(object):
                 observable[i] = state
                 in_wait[i] = state[0]
                 in_service[i] = len(np.argwhere(state[1:] > -1))
+                # in_service[i] = state[1]
 
-            # self._reward = np.exp(-in_wait)
-            for i in range(self._num_beams):
-                if in_service[i] < 10 and in_wait[i] > 0:
-                    self._reward = -2
-
-            if self._reward == 0 and sum(in_service) + sum(in_wait) > 0:
-                self._reward = sum(in_service) / sum(in_service + in_wait)  # - \
+            if sum(in_service) > 0:
+                # if sum(in_wait + in_service) <= self._num_beams * 12:
+                #     self._reward = sum(in_service) / (sum(in_service)
+                #                                       + sum(in_wait))
+                # else:
+                self._reward = sum(in_service) / (12 * self._num_beams)  # -\
                 # (1 - np.exp(-in_wait))
-            elif self._reward != -2:
+            else:  # if self._reward != -2:
                 self._reward = 0
-
-            self._to_assign = np.random.randint(self._num_beams)
-            # if (prob < 0.5):
-            #    self._to_assign = -1
-            # elif(prob < 0.75):
-            #    self._to_assign = 0
-            # else:
-            #    self._to_assign = 1
-
-        if (self._to_assign != -1):
-            self._users = self._user_generation[self._to_assign].step()
-
-        # temp = np.zeros(12)
-        # temp[0] = self._to_assign
-        # temp[1] = self._users
-        # observable[self._num_beams] = np.asarray([self._to_assign,
-        #                                          self._users, 0, 0, 0, 0, 0])
-        # observable[self._num_beams] = temp
-
-        # if reward > 0:
-        # reward = reward / self._num_beams
 
         return observable, self._reward, self._done, self._info
 
     def advance(self):
         """Advane one time step."""
+        self._to_assign = np.random.randint(self._num_beams)
+        self._users = self._user_generation[self._to_assign].step()
+
         for i in range(self._num_beams):
             self._beams[i].advance()
 
@@ -147,7 +140,7 @@ class Satellite(object):
 
     def state(self):
         """Return the state of the satellite."""
-        observable = np.zeros((self._num_beams, 11))
+        observable = np.zeros((self._num_beams, 16))
 
         for i in range(self._num_beams):
             state = self._beams[i].state()

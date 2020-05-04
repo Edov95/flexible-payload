@@ -29,12 +29,12 @@ class Beam(object):
         self._in_wait = int(0)
         self._reward = int(0)
 
-        self._max_users = int(10)
+        self._max_users = int(15)
         self._has_user = False
         self._user = None
         self._done = False
         self._info = {}
-        self._state = np.full(11, -1)
+        self._state = np.full(16, [0, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1])
         self._state[0] = 0
 
     def step(self, action):  # , user):  # , time):
@@ -65,22 +65,13 @@ class Beam(object):
             else:
                 print("No valid action")
 
-        # if self._reward == 0:
-        #     self._reward = np.exp(-self._in_wait)
-            # self._reward = self._in_service
-
-        # state = np.zeros(2)
-        # self._state[5] = self._state[3]
-        # self._state[4] = self._state[2]
-        # self._state[3] = self._state[1]
-        # self._state[2] = self._state[0]
         for i in range(self._max_users):
             if(i < len(self._service_queue)):
                 self._state[1 + i] = self._service_queue[i].service_time()
             else:
                 self._state[1 + i] = -1
-        # self._state[0] = self._in_service
         self._state[0] = self._in_wait
+        # self._state[1] = len(self._service_queue)
 
         return self._state, self._reward, self._info
 
@@ -155,18 +146,6 @@ class Beam(object):
 
     def action_three(self):
         """Add the arrived user and the firt user of wait queue in service."""
-        # if (self._has_user):
-        #     if ((self._max_users - self._in_service) >= 2):
-        #         self.add_user_in_service(self._user)
-        #         if (self._in_wait > 0):
-        #             temp_user = self._wait_queue.pop(0)
-        #             self._in_wait -= 1
-        #             self.add_user_in_service(temp_user)
-        #         else:
-        #             self._reward -= 2
-        #     else:
-        #         self._reward -= 2
-        # else:
         if (self._in_wait > 0 and self._max_users - self._in_service > 0):
             temp_user = self._wait_queue.pop(0)
             self._in_wait -= 1
@@ -180,6 +159,15 @@ class Beam(object):
         user.put_in_service()
         self._service_queue.append(user)
         self._in_service += 1
+
+    def clean_service(self):
+        """Remove all the user from the service queue."""
+        self._service_queue = []
+        self._in_service = 0
+        self._state = np.full(16, [len(self._wait_queue), -1, -1, -1, -1, -1,
+                                   -1, -1, -1, -1, -1, -1, -1, -1, -1, -1])
+
+        return self._state, 0, ""
 
     def add_user_in_wait(self, user):
         """Add user in wait queue."""

@@ -84,7 +84,7 @@ class UserGenerationRate(object):
 
     _arrival_rate = 0
 
-    def __init__(self):
+    def __init__(self, mean):
         """Docstring for Constructor.
 
         Default Constructor
@@ -95,6 +95,7 @@ class UserGenerationRate(object):
         # Punto di inizio modellato come una uniforme tra -pi/6 e pi/6,
         # così modello lo spazio tra il traffico in funzione del fuso orario
         # È la fase del mio rate
+        self._mean = mean
         self._start_point = np.random.uniform(0, 2*np.pi)
         # print(self._start_point)
         self.calculate_lambda()
@@ -134,8 +135,7 @@ class UserGenerationRate(object):
         x = np.linspace(self._start_point, 4 * np.pi + self._start_point,
                         self.stamps)
         # Ora ho un processo che è anche negativo
-        arrival_rate = np.sin(x) + 2
-        # Devo rendere il processo positivo, non esiste capacità negativa.
+        arrival_rate = np.sin(x) + self._mean  # Devo rendere il processo positivo, non esiste capacità negativa.
         # Ora non è negativa, di "notte" posso avere uno 0, improbabile
         # Risolvere in future versioni
         self._arrival_rate = arrival_rate

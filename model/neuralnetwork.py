@@ -29,19 +29,20 @@ class Agent(object):
             self._actions[0, i] = 1
 
         self._n_state = n_state
-        self._gamma = 0.8
+        self._gamma = 0.5
 
     def create_step_model(self, n_actions, n_state):
         """Create the models for the neaural network."""
         x = Input(shape=(1, n_state))
         x1 = Flatten()(x)
-        x2 = (Dense(48, activation='relu'))(x1)
+        x2 = (Dense(54, activation='relu'))(x1)
         x3 = (Dense(48, activation='relu'))(x2)
-        x4 = (Dense(n_actions))(x3)
+        x4 = (Dense(32, activation='relu'))(x3)
+        x5 = (Dense(n_actions))(x4)
 
         actions_input = Input((n_actions,), name='mask')
         actions_input2 = keras.layers.Reshape((1, n_actions))(actions_input)
-        filtered_output = keras.layers.Multiply()([actions_input2, x4])
+        filtered_output = keras.layers.Multiply()([actions_input2, x5])
         filtered_output = keras.layers.Reshape((n_actions, 1))(filtered_output)
 
         step_model = Model(inputs=[x, actions_input], outputs=filtered_output)
@@ -101,7 +102,7 @@ class Agent(object):
                                              ),
                                              self._actions],
                                              use_multiprocessing=True)
-        return np.argmax(actions)
+        return np.argmax(actions), actions
 
 
 def create_step_model2():
