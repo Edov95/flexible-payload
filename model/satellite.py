@@ -81,8 +81,8 @@ class Satellite(object):
             for i in range(self._num_beams):
                 state_2, _, info = self._beams[i].step(-1)
                 observable[i] = state_2
-                in_wait[i] = state[0]
-                in_service[i] = len(np.argwhere(state[1:] > -1))
+                in_wait[i] = state_2[0]
+                in_service[i] = len(np.argwhere(state_2[1:] > -1))
 
             self._reward = sum(in_service) / (12 * self._num_beams)
 
