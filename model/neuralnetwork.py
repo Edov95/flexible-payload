@@ -15,13 +15,17 @@ from keras_radam import RAdam
 class Agent(object):
     """docstring for Agent."""
 
-    def __init__(self, n_actions, actions, n_state):
+    def __init__(self, n_actions, actions, n_state, training, weights):
         """Create the class."""
         super(Agent, self).__init__()
         self._step_model = self.create_step_model(n_actions, n_state)
 
         self._target_model = keras.models.clone_model(self._step_model)
-        self._target_model.set_weights(self._step_model.get_weights())
+        # self._target_model.set_weights(self._step_model.get_weights())
+        if training is True:
+            self._target_model.set_weights(self._step_model.get_weights())
+        else:
+            self._target_model.load_weights(weights)
 
         self._n_actions = n_actions
         self._actions = np.ndarray((1, self._n_actions))
@@ -73,6 +77,7 @@ class Agent(object):
                                                      use_multiprocessing=True
                                                      )[0]
             act = np.ndarray((1, self._n_actions))
+            # print(action)
             act[0, action] = 1
 
             sample_output[:, 0] = 0
@@ -103,6 +108,10 @@ class Agent(object):
                                              self._actions],
                                              use_multiprocessing=True)
         return np.argmax(actions), actions
+
+    def save(self, name):
+        """Save the model"""
+        self._target_model.save(name)
 
 
 def create_step_model2():

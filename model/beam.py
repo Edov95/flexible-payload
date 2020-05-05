@@ -57,20 +57,11 @@ class Beam(object):
 
         if (-1 != action):
             if (0 == action):
-                # self.action_one()
-            # elif (1 == action):
-                # self.action_two()
-            # elif (2 == action):
                 self.action_three()
             else:
                 print("No valid action")
 
-        for i in range(self._max_users):
-            if(i < len(self._service_queue)):
-                self._state[1 + i] = self._service_queue[i].service_time()
-            else:
-                self._state[1 + i] = -1
-        self._state[0] = self._in_wait
+        self.state()
         # self._state[1] = len(self._service_queue)
 
         return self._state, self._reward, self._info
@@ -108,7 +99,7 @@ class Beam(object):
         # Remove users that have terminated the service
         for i in range(len(indexes)):
             self._wait_queue.pop(indexes[i] - i)
-            self._reward -= 1
+            # self._reward -= 1
 
         self._in_wait = len(self._wait_queue)
 
@@ -119,6 +110,14 @@ class Beam(object):
 
     def state(self):
         """Return the state for the beam."""
+
+        for i in range(self._max_users):
+            if(i < len(self._service_queue)):
+                self._state[1 + i] = self._service_queue[i].service_time()
+            else:
+                self._state[1 + i] = -1
+        self._state[0] = self._in_wait
+
         return self._state
 
     # def random_state(self):
@@ -128,29 +127,13 @@ class Beam(object):
         self._user = usr.User()
         self.add_user_in_wait(self._user)
 
-    def action_one(self):
-        """Execute the action one."""
-        if(self._has_user):
-            if (self._in_service < self._max_users):
-                self.add_user_in_service(self._user)
-            else:
-                self.add_user_in_wait(self._user)
-                self._reward -= 2
-
-    def action_two(self):
-        """Put the user in wait queue."""
-        if(self._has_user):
-            self.add_user_in_wait(self._user)
-        else:
-            self._reward -= 2
-
     def action_three(self):
         """Add the arrived user and the firt user of wait queue in service."""
         if (self._in_wait > 0 and self._max_users - self._in_service > 0):
             temp_user = self._wait_queue.pop(0)
-            self._in_wait -= 1
+            self._in_wait = len(self._wait_queue)
             self.add_user_in_service(temp_user)
-            self._reward = 0.1
+            self._reward = 0
         else:
             self._reward = -3
 
@@ -158,7 +141,7 @@ class Beam(object):
         """Put the user in service queue."""
         user.put_in_service()
         self._service_queue.append(user)
-        self._in_service += 1
+        self._in_service = len(self._service_queue)
 
     def clean_service(self):
         """Remove all the user from the service queue."""
@@ -173,7 +156,7 @@ class Beam(object):
         """Add user in wait queue."""
         user.put_in_wait()
         self._wait_queue.append(user)
-        self._in_wait += 1
+        self._in_wait = len(self._wait_queue)
 
     def DVB2S(self, SNR):
         """Rerturn the spectral efficiency given an SNR in dB."""
