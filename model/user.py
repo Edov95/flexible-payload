@@ -16,8 +16,8 @@ class User(object):
         """
         super(User, self).__init__()
         self._demand = 500  # Capacity in kbps, a number (articolo cinesi)
-        self._service_time = np.random.poisson(5)  # service time in seconds
-        self._wait_time = 4  # constant wait time for the user can be random
+        self._service_time = 20  # np.random.poisson(10) + 10  # service time in seconds
+        self._wait_time = 10  # constant wait time for the user can be random
         self._queue = "None"  # indicate in which queue the user is
         # calcolo priorità in funzione di una uniforme e dei limiti
         # Si potrebbe mettere domanda in funzione della priorità e non tenedola
@@ -96,7 +96,8 @@ class UserGenerationRate(object):
         # così modello lo spazio tra il traffico in funzione del fuso orario
         # È la fase del mio rate
         self._mean = mean
-        self._start_point = np.random.uniform(0, 2 * np.pi)
+        self._start_point = np.random.uniform(0, np.pi/2)
+        # self._start_point = 0
         # print(self._start_point)
         self.calculate_lambda()
 
@@ -132,10 +133,10 @@ class UserGenerationRate(object):
         # Modello il mio traffico come processo nel tempo, la cui media
         # La cui media segue l'andamento di una sinusoide, x sono i ounti per
         # calcolare la media
-        x = np.linspace(self._start_point, 4 * np.pi + self._start_point,
+        x = np.linspace(self._start_point, 2 * np.pi + self._start_point,
                         self.stamps)
         # Ora ho un processo che è anche negativo
-        arrival_rate = 2 * np.sin(x) + self._mean + 2
+        arrival_rate = 2 * np.sin(x) + 2 + self._mean
         # Ora non è negativa, di "notte" posso avere uno 0, improbabile
         # Risolvere in future versioni
         self._arrival_rate = arrival_rate

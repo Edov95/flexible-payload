@@ -33,15 +33,15 @@ class Agent(object):
             self._actions[0, i] = 1
 
         self._n_state = n_state
-        self._gamma = 0.5
+        self._gamma = 0.7
 
     def create_step_model(self, n_actions, n_state):
         """Create the models for the neaural network."""
         x = Input(shape=(1, n_state))
         x1 = Flatten()(x)
-        x2 = (Dense(54, activation='relu'))(x1)
-        x3 = (Dense(48, activation='relu'))(x2)
-        x4 = (Dense(32, activation='relu'))(x3)
+        x2 = (Dense(8, activation='relu'))(x1)
+        # x3 = (Dense(48, activation='relu'))(x2)
+        x4 = (Dense(8, activation='relu'))(x2)
         x5 = (Dense(n_actions))(x4)
 
         actions_input = Input((n_actions,), name='mask')
@@ -63,19 +63,14 @@ class Agent(object):
         for sample in samples:
             state = sample[0].reshape((1, 1, self._n_state))  # Previous state
             action = sample[1]  # Action made
-            new_state = sample[2].reshape(
-                                  (1, 1, self._n_state)
-                                  )  # Arrival state
+            new_state = sample[2].reshape((1, 1, self._n_state))  # Arrival state
             reward = sample[3]  # Obtained reward
 
             sample_goal = reward + self._gamma * np.max(
-                          self._target_model.predict([new_state,
-                                                     self._actions],
-                                                     use_multiprocessing=True))
+                          self._target_model.predict([np.asarray(new_state),
+                                                     self._actions]))
             sample_output = self._step_model.predict([np.asarray(state),
-                                                      self._actions],
-                                                     use_multiprocessing=True
-                                                     )[0]
+                                                      self._actions])[0]
             act = np.ndarray((1, self._n_actions))
             # print(action)
             act[0, action] = 1
@@ -93,20 +88,17 @@ class Agent(object):
                              batch_size=None,
                              epochs=1,
                              steps_per_epoch=1,
-                             verbose=0,
-                             use_multiprocessing=True)
+                             verbose=0)
 
     def update(self):
         """Update the target model of the agent."""
         self._target_model.set_weights(self._step_model.get_weights())
 
-    def predict(self, old_state):
+    def predict(self, state):
         """Predict the action using the target model."""
-        actions = self._target_model.predict([old_state.reshape(
-                                             (1, 1, self._n_state)
-                                             ),
-                                             self._actions],
-                                             use_multiprocessing=True)
+        old_state = state.reshape((1, 1, self._n_state))
+        actions = self._target_model.predict([np.asarray(old_state),
+                                             self._actions])
         return np.argmax(actions), actions
 
     def save(self, name):
@@ -114,18 +106,18 @@ class Agent(object):
         self._target_model.save(name)
 
 
-def create_step_model2():
-    """Create the neaural network."""
-    x = Input(shape=(None, 1))
-    x2 = (Dense(16, activation='relu'))(x)
-    x3 = (Dense(16, activation='relu'))(x2)
-    x4 = (Dense(1, activation='tanh'))(x3)
-    step_model = Model(inputs=[x], outputs=x4)
-    opt = RAdam()
-    step_model.compile(optimizer=opt, loss='mean_squared_error')
-    return step_model
-
-
-def clone_model(model):
-    """Model krapper for the keras function."""
-    return keras.models.clone_model(model)
+# def create_step_model2():
+#     """Create the neaural network."""
+#     x = Input(shape=(None, 1))
+#     x2 = (Dense(16, activation='relu'))(x)
+#     x3 = (Dense(16, activation='relu'))(x2)
+#     x4 = (Dense(1, activation='tanh'))(x3)
+#     step_model = Model(inputs=[x], outputs=x4)
+#     opt = RAdam()
+#     step_model.compile(optimizer=opt, loss='mean_squared_error')
+#     return step_model
+#
+#
+# def clone_model(model):
+#     """Model krapper for the keras function."""
+#     return keras.models.clone_model(model)

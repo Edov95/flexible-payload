@@ -33,6 +33,8 @@ class Satellite(object):
                                  for i in range(beams)]
         self._users = int(0)
         self._reward = 0
+        self._cnt = 0
+        self._max_users = 24 * self._num_beams
         # self._tot_pow = 61
         # self._state = [61 for _ in range(beams)]
         # self._state.append(self._tot_pow)
@@ -42,36 +44,62 @@ class Satellite(object):
         """Apply the action to the satellite."""
         # user = usr.User()
         # time = np.random.poisson(3)
-        observable = np.zeros((self._num_beams, 16))
+        observable = np.zeros((self._num_beams, 2))
         reward = 0
-        self._done = True
+        self._done = False
         self._reward = 0
 
-        state = self.state()
         in_service = 0
-        for i in range(len(state)):
-            in_service = in_service + len(np.argwhere(state[1:] > -1))
+        in_wait = 0
+        for i in range(self._num_beams):
+            state, _, info = self._beams[i].step(-1)
+            # observable[i][0] = 0 if state[0] == 0 else 1
+            observable[i][0] = state[0]
+            observable[i][1] = len(np.argwhere(state[1:] > -1))
+            in_wait += state[0]
+            in_service += len(np.argwhere(state[1:] > -1))
 
         if action != self._num_beams:
-            if in_service < self._num_beams * 12:
+            if in_service < self._max_users:
+
+                in_wait = np.zeros(self._num_beams)
+                in_service = np.zeros(self._num_beams)
 
                 for i in range(self._num_beams):
                     # print("Beam: {}".format(i))
                     if (i == action):
-                        state, rew, info = self._beams[i].step(0)
+                        state, reward, info = self._beams[i].step(0)
                     else:
-                        state, rew, info = self._beams[i].step(-1)
+                        state, _, _ = self._beams[i].step(-1)
+                    # observable[i][0] = 0 if state[0] == 0 else 1
+                    observable[i][0] = state[0]
+                    observable[i][1] = len(np.argwhere(state[1:] > -1))
+                    in_service[i] = len(np.argwhere(state[1:] > -1))
+                    in_wait[i] = state[0]
 
-                    reward += rew
-                    observable[i] = state
+                self._info = {"in_wait": in_wait}
 
                 if reward < 0:
                     self._done = True
-                    self._reward = -2
-                elif self._reward >= 0:
-                    self._reward = in_service / (12 * self._num_beams)
+                    self._reward = -3
+                else:
+                    # self._reward = 0.1
+                    """if sum(in_service + in_wait) > 0:
+                        if sum(in_service + in_wait) < 9 * self._num_beams:
+                            self._reward = sum(in_service) / sum(in_service + in_wait)
+                        else:
+                            self._reward = sum(in_service) / (9 * self._num_beams)
+                    else:
+                        self._reward = 0
+                    # self._reward = sum(in_service) / (12 * self._num_beams)"""
+                    self._reward = 0.1
+
+                # if 0 == action:
+                #     self._reward = 1
+                # else:
+                #     self._reward = 0
             else:
-                return observable, -3, True, self._info
+                return observable, -2, True, self._info
         else:
             self._done = True
 
@@ -80,11 +108,26 @@ class Satellite(object):
 
             for i in range(self._num_beams):
                 state_2, _, info = self._beams[i].step(-1)
-                observable[i] = state_2
+                # observable[i][0] = 0 if state_2[0] == 0 else 1
+                observable[i][0] = state_2[0]
+                observable[i][1] = len(np.argwhere(state_2[1:] > -1))
                 in_wait[i] = state_2[0]
                 in_service[i] = len(np.argwhere(state_2[1:] > -1))
 
-            self._reward = sum(in_service) / (12 * self._num_beams)
+            self._info = {"in_wait": in_wait}
+
+            # print("User in service: {}".format(sum(in_service)))
+            # print(sum(in_service + in_wait))
+            if sum(in_service + in_wait) > 0:
+                if sum(in_service + in_wait) < self._max_users:
+                    self._reward = sum(in_service) / sum(in_service + in_wait)
+                else:
+                    self._reward = sum(in_service) / self._max_users
+            else:
+                self._reward = 0
+            # print("Associated reward: {}".format(self._reward))"""
+
+            # self._reward = 0
 
         return observable, self._reward, self._done, self._info
 
@@ -92,14 +135,17 @@ class Satellite(object):
         """Advane one time step."""
         self._to_assign = np.random.randint(self._num_beams)
         self._users = self._user_generation[self._to_assign].step()
+        # self._users = np.random.randint(2) + 1
+
+        # for i in range(self._num_beams):
+        #     self._beams[i].advance()
+
+        for _ in range(self._users):
+        # if self._to_assign != self._num_beams:
+            self._beams[self._to_assign].add_user()
 
         for i in range(self._num_beams):
             self._beams[i].advance()
-
-        if(self._to_assign != -1):
-            for _ in range(self._users):
-                self._beams[self._to_assign].add_user()
-
         return self.state()
 
     # def random_state(self):
@@ -121,11 +167,13 @@ class Satellite(object):
 
     def state(self):
         """Return the state of the satellite."""
-        observable = np.zeros((self._num_beams, 16))
+        observable = np.zeros((self._num_beams, 2))
 
         for i in range(self._num_beams):
             state = self._beams[i].state()
-            observable[i] = state
+            # observable[i][0] = 0 if state[0] == 0 else 1
+            observable[i][0] = state[0]
+            observable[i][1] = len(np.argwhere(state[1:] > -1))
 
         return observable
 

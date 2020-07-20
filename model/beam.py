@@ -29,12 +29,12 @@ class Beam(object):
         self._in_wait = int(0)
         self._reward = int(0)
 
-        self._max_users = int(15)
+        self._max_users = int(30)
         self._has_user = False
         self._user = None
         self._done = False
         self._info = {}
-        self._state = np.full(16, [0, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1])
+        self._state = np.full(self._max_users + 1, -1)
         self._state[0] = 0
 
     def step(self, action):  # , user):  # , time):
@@ -133,7 +133,7 @@ class Beam(object):
             temp_user = self._wait_queue.pop(0)
             self._in_wait = len(self._wait_queue)
             self.add_user_in_service(temp_user)
-            self._reward = 0
+            self._reward = (len(np.argwhere(self._state[1:] > -1))) / self._max_users
         else:
             self._reward = -3
 
